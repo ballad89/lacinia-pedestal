@@ -12,7 +12,7 @@ Lacinia-Pedestal also supports GraphQL subscriptions, using the same protocol
 as [Apollo GraphQL](https://github.com/apollographql/subscriptions-transport-ws).
 
 [Lacinia-Pedestal Manual](http://lacinia-pedestal.readthedocs.io/en/latest/) |
-[API Documentation](http://walmartlabs.github.io/lacinia-pedestal/)
+[API Documentation](http://walmartlabs.github.io/apidocs/lacinia-pedestal/)
 
 ## Usage
 
@@ -69,7 +69,7 @@ the compiled schema based on the latest code you've loaded into the REPL.
 ### GraphiQL
 
 The GraphiQL packaged inside the library is built using `npm`, from
-version `0.11.2`.
+version `0.12.0`.
 
 ## License
 

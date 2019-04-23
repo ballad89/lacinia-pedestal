@@ -32,9 +32,14 @@
     [com.walmartlabs.lacinia.executor :as executor]
     [com.walmartlabs.lacinia.constants :as constants]
     [com.walmartlabs.lacinia.resolve :as resolve]
-    [clojure.string :as str])
+    [clojure.string :as str]
+    [clojure.spec.alpha :as s]
+    [com.walmartlabs.lacinia.pedestal.spec :as spec])
   (:import
     (org.eclipse.jetty.websocket.api UpgradeResponse)))
+
+(when (-> *clojure-version* :minor (< 9))
+  (require '[clojure.future :refer [pos-int?]]))
 
 (defn ^:private xform-channel
   [input-ch output-ch xf]
@@ -202,25 +207,32 @@
                       (keep ::errors)
                       first)
           parse-errors (->> errors
-                            (keep :parse-error)
-                            distinct)]
+                            (keep :message)
+                            distinct)
+          locations (->> (mapcat :locations errors)
+                         (remove nil?)
+                         distinct
+                         seq)]
 
     (seq parse-errors)
-    {:message (str "Failed to parse GraphQL query. "
-                   (->> parse-errors
-                        (keep fix-up-message)
-                        (str/join "; "))
-                   ".")}
+    (cond-> {:message (str "Failed to parse GraphQL query. "
+                           (->> parse-errors
+                                (keep fix-up-message)
+                                (str/join "; "))
+                           ".")}
+      locations (assoc :locations locations))
 
     ;; Apollo spec only has room for one error, so just use the first
 
     (seq errors)
-    (first errors)
+    (cond-> (first errors)
+      locations (assoc :locations locations))
 
     :else
     ;; Strip off the exception added by Pedestal and convert
     ;; the message into an error map
-    {:message (to-message t)}))
+    (cond-> {:message (to-message t)}
+      locations (assoc :locations locations))))
 
 (def exception-handler-interceptor
   "An interceptor that implements the :error callback, to send an \"error\" message to the client."
@@ -496,3 +508,22 @@
            :on-text #(put! ws-text-ch %)
            :on-error #(log/error :event ::error :exception %)
            :on-close on-close})))))
+
+(s/fdef listener-fn-factory
+  :args (s/cat :compiled-schema ::spec/compiled-schema
+               :options (s/nilable ::listener-fn-factory-options)))
+
+(s/def ::listener-fn-factory-options (s/keys :opt-un [::keep-alive-ms
+                                                      ::spec/app-context
+                                                      ::subscription-interceptors
+                                                      ::init-context
+                                                      ::response-ch-fn
+                                                      ::values-chan-fn
+                                                      ::send-buffer-or-n]))
+
+(s/def ::keep-alive-ms pos-int?)
+(s/def ::subscription-interceptors ::spec/interceptors)
+(s/def ::init-context fn?)
+(s/def ::response-chan-fn fn?)
+(s/def ::values-chan-fn fn?)
+(s/def ::send-buffer-or-n ::spec/buffer-or-n)

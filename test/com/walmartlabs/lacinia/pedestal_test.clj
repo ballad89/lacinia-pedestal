@@ -15,22 +15,19 @@
 (ns com.walmartlabs.lacinia.pedestal-test
   (:require
     [clojure.test :refer [deftest is use-fixtures]]
-    [com.walmartlabs.lacinia.pedestal :as lp :refer [inject]]
+    [com.walmartlabs.lacinia.pedestal :refer [inject]]
     [clj-http.client :as client]
     [clojure.string :as str]
     [com.walmartlabs.lacinia.test-utils :refer [test-server-fixture
                                                 send-request
-                                                send-json-request]]
+                                                send-json-request
+                                                send-json-string-request]]
     [clojure.spec.test.alpha :as stest])
   (:import (clojure.lang ExceptionInfo)))
 
 (stest/instrument)
 
-(use-fixtures :once (test-server-fixture {:graphiql true}
-                                         (fn [schema]
-                                           ;; Force things to work as they will in 0.8.0,
-                                           ;; where the interceptors are a seq (not a map).
-                                           {:interceptors (lp/default-interceptors schema nil)})))
+(use-fixtures :once (test-server-fixture {:graphiql true}))
 
 (deftest simple-get-query
   (let [response (send-request "{ echo(value: \"hello\") { value method }}")]
@@ -47,6 +44,10 @@
     (is (= {:data {:echo {:method "post"
                           :value "hello"}}}
            (:body response)))))
+
+(deftest invalid-json-post-query
+  (let [response (send-json-string-request :post "f" "application/json")]
+    (is (= 400 (:status response)))))
 
 (deftest includes-content-type-check-on-post
   (let [response
@@ -104,13 +105,15 @@
 
 (deftest status-set-by-error
   (let [response (send-request "{ echo(value: \"Baked.\", error: 420) { value }}")]
-    (is (= {:body {:data {:echo {:value "Baked."}}
-                   :errors [{:arguments {:error "420"
-                                         :value "Baked."}
-                             :locations [{:column 3
-                                          :line 1}]
-                             :message "Forced error."
-                             :query-path ["echo"]}]}
+    (is (= {:body
+            {:data
+             {:echo {:value "Baked."}}
+             :errors [{:extensions {:arguments {:error 420
+                                                :value "Baked."}}
+                       :locations [{:column 3
+                                    :line 1}]
+                       :message "Forced error."
+                       :path ["echo"]}]}
             :status 420}
            (select-keys response [:status :body])))))
 
@@ -164,3 +167,9 @@
         wilma {:name :wilma}]
     (is (= [fred wilma]
            (inject [fred barney] wilma :replace :barney)))))
+
+(deftest query-missing-from-request
+  (is (= {:body {:errors [{:message "GraphQL query not supplied in request body."}]}
+          :status 400}
+         (select-keys (send-request :post-json "{}")
+                      [:status :body]))))

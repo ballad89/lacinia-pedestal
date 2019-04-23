@@ -1,3 +1,38 @@
+## 0.11.0 -- 4 Jan 2019
+
+Update version of GraphiQL to current, 0.12.0.
+
+Problems with compatibility with Clojure 1.8 were resolved.
+
+[Closed Issues](https://github.com/walmartlabs/lacinia-pedestal/milestone/10?closed=1)
+
+## 0.10.0 -- 14 Sep 2018
+
+A spec for the `service-map` function is now provided.
+
+Changes were made to allow for the updated structure of error maps in Lacinia 0.29.0.
+
+The default set of interceptors has been split up slightly, in advance
+of support for server-stored queries in an upcoming release.
+In particular, the `:com.walmartlabs.lacinia.pedestal/query-parser` interceptor
+was split in two: `query-parser` now *only* parses the query, and 
+the new `:com.walmartlabs.lacinia.pedestal/prepare-query` interceptor prepares
+the query itself (that is, applies query variables).
+
+The signature of `com.walmartlabs.lacinia.pedestal/routes-from-interceptors`
+has changed in an incompatible way; it now expects the compiled schema
+as the first argument (previously it was the root path); this function
+is not generally invoked from user code.
+
+[Closed Issues](https://github.com/walmartlabs/lacinia-pedestal/milestone/9?closed=1)
+
+## 0.9.0 -- 21 Jun 2018
+
+Invalid JSON sent to lacinia-pedestal now results in proper 400 reponse,
+rather than throwing an exception (and a 500 response).
+
+[Closed Issues](https://github.com/walmartlabs/lacinia-pedestal/milestone/8?closed=1)
+
 ## 0.8.0 -- 6 Jun 2018
 
 The `com.walmartlabs.lacinia.pedestal.interceptors` namespaces has been
